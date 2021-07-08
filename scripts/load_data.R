@@ -255,7 +255,12 @@ for(i in 1:n) {
   
   n2000 <- union_arc_style(n2000lys.i, n2000skov.i)->a
   p.natur <- union_arc_style(p3_natur.i, skov25.i)->b
-  beskyttet.natur <- union_arc_style(n2000, p.natur)
+  # beskyttet.natur <- union_arc_style(n2000, p.natur)
+  
+  n2000.union <- st_buffer(st_union(n2000), 0)
+  p.natur.minus.2000 <- st_difference(p.natur, n2000.union)
+  
+  beskyttet.natur <- bind_rows(n2000, p.natur.minus.2000)
   
   beskyttet.natur.df <- beskyttet.natur %>% 
     bind_cols(area = drop_units(st_area(beskyttet.natur))) %>% 
