@@ -9,21 +9,26 @@ library(tidyverse)
 library(sf)
 library(rgdal)
 library(tictoc)
-# install.packages("arcgisbinding", repos="https://r.esri.com", type="win.binary")
-library(arcgisbinding)
-arc.check_product()
+
+# Load DHM
+if(file.exists("builds/dhm.rds")) {
+  dhm <- read_rds("builds/dhm.rds")
+} else {
+  # install.packages("arcgisbinding", repos="https://r.esri.com", type="win.binary")
+  library(arcgisbinding)
+  arc.check_product()
+  # ogrListLayers("O:/AUIT_Geodata/Denmark/Digital_elevation_models/Lidar/DHM_2014.gdb")
+  dhm.mosaic <- arc.open("O:/AUIT_Geodata/Denmark/Digital_elevation_models/Lidar/DHM_2014.gdb/Terrain_2014_resample_10m")
+  dhm.mosaic <- arc.raster(dhm.mosaic)
+  dhm <- as.raster(dhm.mosaic)
+  all.equal(crs(dhm), crs(areas))
+  write_rds(dhm, "builds/dhm.rds")
+}
 
 library(doSNOW)
 cluster.size <- 2
 cl <- parallel::makeCluster(cluster.size)
 registerDoSNOW(cl)
-
-# library(Rmpi)
-# library(doMPI)
-# # library(itertools)
-# mpi.close.Rslaves()
-# cl <- startMPIcluster(2)
-# registerDoMPI(cl)
 
 # Load areas --------------------------------------------------------------
 areas5 <- st_read("O:/Nat_Ecoinformatics/C_Write/_Proj/NaturNationalparker_au233076_au135847/data/NNP/de fem nye/ForelobigeNNPGraenser.shp")
@@ -185,25 +190,6 @@ df <- left_join(df, intersect)
 
 
 # Terrain data ------------------------------------------------------------
-# Load DHM
-if(file.exists("builds/dhm.rds")) {
-  dhm <- read_rds("builds/dhm.rds")
-} else {
-  # ogrListLayers("O:/AUIT_Geodata/Denmark/Digital_elevation_models/Lidar/DHM_2014.gdb")
-  dhm.mosaic <- arc.open("O:/AUIT_Geodata/Denmark/Digital_elevation_models/Lidar/DHM_2014.gdb/Terrain_2014_resample_10m")
-  dhm.mosaic <- arc.raster(dhm.mosaic)
-  dhm <- as.raster(dhm.mosaic)
-  all.equal(crs(dhm), crs(areas))
-  write_rds(dhm, "builds/dhm.rds")
-}
-
-names <- areas$Name
-n <- length(names)
-
-pb <- txtProgressBar(max = n, style = 3)
-opts <- list(progress = function(n) setTxtProgressBar(pb, n))
-
-
 # Load current maps
 timestamp()
 tic()
