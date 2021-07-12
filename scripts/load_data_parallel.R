@@ -15,8 +15,15 @@ arc.check_product()
 
 library(doSNOW)
 cluster.size <- 2
-cl <- makeCluster(cluster.size)
+cl <- parallel::makeCluster(cluster.size)
 registerDoSNOW(cl)
+
+# library(Rmpi)
+# library(doMPI)
+# # library(itertools)
+# mpi.close.Rslaves()
+# cl <- startMPIcluster(2)
+# registerDoMPI(cl)
 
 # Load areas --------------------------------------------------------------
 areas5 <- st_read("O:/Nat_Ecoinformatics/C_Write/_Proj/NaturNationalparker_au233076_au135847/data/NNP/de fem nye/ForelobigeNNPGraenser.shp")
@@ -179,11 +186,16 @@ df <- left_join(df, intersect)
 
 # Terrain data ------------------------------------------------------------
 # Load DHM
-# ogrListLayers("O:/AUIT_Geodata/Denmark/Digital_elevation_models/Lidar/DHM_2014.gdb")
-dhm.mosaic <- arc.open("O:/AUIT_Geodata/Denmark/Digital_elevation_models/Lidar/DHM_2014.gdb/Terrain_2014_resample_10m")
-dhm.mosaic <- arc.raster(dhm.mosaic)
-dhm <- as.raster(dhm.mosaic)
-all.equal(crs(dhm), crs(areas))
+if(file.exists("builds/dhm.rds")) {
+  dhm <- read_rds("builds/dhm.rds")
+} else {
+  # ogrListLayers("O:/AUIT_Geodata/Denmark/Digital_elevation_models/Lidar/DHM_2014.gdb")
+  dhm.mosaic <- arc.open("O:/AUIT_Geodata/Denmark/Digital_elevation_models/Lidar/DHM_2014.gdb/Terrain_2014_resample_10m")
+  dhm.mosaic <- arc.raster(dhm.mosaic)
+  dhm <- as.raster(dhm.mosaic)
+  all.equal(crs(dhm), crs(areas))
+  write_rds(dhm, "builds/dhm.rds")
+}
 
 names <- areas$Name
 n <- length(names)
@@ -191,40 +203,41 @@ n <- length(names)
 pb <- txtProgressBar(max = n, style = 3)
 opts <- list(progress = function(n) setTxtProgressBar(pb, n))
 
+
 # Load current maps
 timestamp()
 tic()
 dhm.res <- foreach(i=1:n,                         
-                   .packages=c('raster', 'tidyverse'), 
-                   .combine = bind_rows,
+                   .packages=c('raster', 'tidyverse', 'sf'), 
+                   .combine = c,
                    .inorder = TRUE,
                    .options.snow = opts) %dopar% {
                     area_x <- areas[areas$Name == names[i], ]
                     dhm_x <- crop(dhm, area_x)
                     dhm_y <- mask(dhm_x, area_x)
                     dhm.res <- c()
-                  
+
                     dhm.res$dtm.range <- diff(range(dhm_y[], na.rm = T))
                     dhm.res$dtm.sd <- sd(dhm_y[], na.rm = T)
-                    
+
                     tri <- terrain(dhm_y, opt = "TRI")
                     dhm.res$TRI.median <- median(tri[], na.rm = T)
                     dhm.res$TRI.q975 <- quantile(tri[], probs = c(0.975), na.rm = TRUE)
-                    
+
                     # SD for 3 neigbourhood
                     focal_sd <- function(x, w = 3) {
-                      m <- matrix(1, nc=w, nr=w)
+                      m <- matrix(1, nc = w, nr = w)
                       f <- focal(x, m, fun = sd)
                     }
                     sd3 <- focal_sd(dhm_y)
                     dhm.res$sd3.median <- median(sd3[], na.rm = T)
                     dhm.res$sd3.q975 <- quantile(sd3[], probs = c(0.975), na.rm = TRUE)
-                    
+
                     # Slope
                     slope <- terrain(dhm_y, opt = "slope", unit = "degrees")
                     steep.pct <- mean(na.omit(slope[]) > 15) * 100
                     dhm.res$steep.pct <- steep.pct
-                    
+
                     return(dhm.res)
 }
 toc()
@@ -245,7 +258,7 @@ n <- length(names)
 timestamp()
 tic()
 score.res <- foreach(i=1:n,                         
-                   .packages=c('raster', 'tidyverse'), 
+                   .packages=c('raster', 'tidyverse', 'sf'), 
                    .combine = bind_rows,
                    .inorder = TRUE,
                    .options.snow = opts) %dopar% {
@@ -279,7 +292,7 @@ gc()
 
 timestamp()
 tic()
-res <- foreach(i=1:n,                         
+res1000 <- foreach(i=1:n,                         
                      .packages=c('sf', 'tidyverse'), 
                      .combine = bind_rows,
                      .inorder = TRUE,
@@ -338,7 +351,7 @@ res <- foreach(i=1:n,
   return(res)
 }
 toc()
-df <- bind_cols(df, res)
+df <- bind_cols(df, res1000)
 
 gc()
 
@@ -346,7 +359,7 @@ gc()
 
 timestamp()
 tic()
-res <- foreach(i=1:n,                         
+res5000 <- foreach(i=1:n,                         
                .packages=c('sf', 'tidyverse'), 
                .combine = bind_rows,
                .inorder = TRUE,
@@ -406,7 +419,7 @@ res <- foreach(i=1:n,
   return(res)
 }
 toc()
-df <- bind_cols(df, res)
+df <- bind_cols(df, res5000)
 
 stopCluster(cl)
 gc()
