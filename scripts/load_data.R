@@ -9,8 +9,10 @@ library(tidyverse)
 library(sf)
 library(rgdal)
 library(units)
+library(tictoc)
 # install.packages("arcgisbinding", repos="https://r.esri.com", type="win.binary")
 library(arcgisbinding)
+arc.check_product()
 
 
 # Load areas --------------------------------------------------------------
@@ -28,10 +30,14 @@ areas.marianne <- areas.marianne %>%
             Shape_Area_ha = drop_units(st_area(areas.marianne))/10000)
 
 areas <- bind_rows(areas5, areas.marianne)
+areas <- st_make_valid(areas)
+
+# areas <- areas[which(areas$Name %in% c("Tipperne", "Vejers Plantage, sydlige del")), ]
+# areas <- areas[19, ]
 
 # Plot
-ggplot(areas) +
-  geom_sf(fill = NA, col = "red")
+# ggplot(areas) +
+#   geom_sf(fill = NA, col = "red")
 
 # Make a results table
 df <- st_drop_geometry(areas)
@@ -60,24 +66,31 @@ df <- df %>% mutate(across(matches("jord"), ~ round(./Shape_Area_ha * 100, 1)))
 # Load natura2000 lys
 n2000lys <- st_read("O:/Nat_Ecoinformatics/C_Write/_Proj/NaturNationalparker_au233076_au135847/data/N2K_lys/np3b2020_lysaaben_natur2016_2019.shp")
 n2000lys <- st_transform(n2000lys, st_crs(areas))
-n2000lys <- n2000lys %>% transmute(n2000lys = Habitatnat)
+n2000lys <- n2000lys %>% 
+  transmute(n2000lys = Habitatnat, ArealAndel) %>% 
+  st_make_valid()
 # Load natura2000 skov
 n2000skov <- st_read("O:/Nat_Ecoinformatics/C_Write/_Proj/NaturNationalparker_au233076_au135847/data/N2K_skov/np3b2020_skov_2016_2019.shp")
 n2000skov <- st_transform(n2000skov, st_crs(areas))
-n2000skov <- n2000skov %>% transmute(n2000skov = Nattyp)
+n2000skov <- n2000skov %>% transmute(n2000skov = Nattyp, ArealAndel = Arealpct) %>% 
+  st_make_valid()
 # Load §3 natur
 p3_natur <- st_read("O:/Nat_Ecoinformatics/C_Write/_Proj/NaturNationalparker_au233076_au135847/data/bes_natur/bes_natur_dk.shp")
 p3_natur <- st_transform(p3_natur, st_crs(areas))
-p3_natur <- p3_natur %>% transmute(p3_natur = Natyp_navn)
+p3_natur <- p3_natur %>% transmute(p3_natur = Natyp_navn) %>% 
+  st_make_valid()
 # Load §25 skov
 skov25 <- st_read("O:/Nat_Ecoinformatics/C_Write/_Proj/NaturNationalparker_au233076_au135847/data/25_skov/25skov.shp")
 skov25 <- st_transform(skov25, st_crs(areas))
-skov25 <- skov25 %>% transmute(skov25 = beskrivels)
+skov25 <- skov25 %>% transmute(skov25 = beskrivels) %>% 
+  st_make_valid()
 
+# Find beskyttede natur arealer indenfor områderne og fjern eventuelle interne
+# overlap for §3, for N2000 kan der være mosaikker
 n2000lys.i <- st_intersection(areas[1], n2000lys)
 n2000skov.i <- st_intersection(areas[1], n2000skov)
-p3_natur.i <- st_intersection(areas[1], p3_natur)
-skov25.i <- st_intersection(areas[1], skov25)
+p3_natur.i <- st_intersection(areas[1], p3_natur) %>% st_difference
+skov25.i <- st_intersection(areas[1], skov25) %>% st_difference
 
 # Intersect a and b and keep all fields and non overlapping geometries
 union_arc_style <- function(a, b) {
@@ -105,22 +118,17 @@ union_arc_style <- function(a, b) {
 n2000 <- union_arc_style(n2000lys.i, n2000skov.i)
 p.natur <- union_arc_style(p3_natur.i, skov25.i)
 
-# beskyttet.natur <- union_arc_style(n2000, p.natur)
-
 n2000.union <- st_buffer(st_union(n2000), 0)
 p.natur.minus.2000 <- st_difference(p.natur, n2000.union)
 
 beskyttet.natur <- bind_rows(n2000, p.natur.minus.2000)
 
-beskyttet.natur.df <- beskyttet.natur.df %>%
+beskyttet.natur.df <- beskyttet.natur %>%
   bind_cols(area_ha = drop_units(st_area(beskyttet.natur))/10000) %>%
+  mutate(area_ha = ifelse(!is.na(ArealAndel), area_ha * ArealAndel / 100, area_ha),
+         ArealAndel = NULL) %>% 
   st_drop_geometry() %>%
   remove_rownames()
-
-# beskyttet.natur.df <- beskyttet.natur %>% 
-#   bind_cols(area_ha = drop_units(st_area(beskyttet.natur))/10000) %>% 
-#   st_drop_geometry() %>%
-#   remove_rownames()
 
 beskyttet.natur.df.clean <- beskyttet.natur.df %>% 
   mutate(n2000lys = ifelse(!is.na(n2000lys), paste0("n2000lys_", n2000lys), NA),
@@ -132,15 +140,19 @@ beskyttet.natur.df.clean <- beskyttet.natur.df %>%
             area_ha) %>% 
   group_by(Name, beskyttelse) %>% 
   summarise(area_ha = sum(area_ha)) %>% 
-  right_join(df[c(1,3)]) %>% 
+  right_join(df[c("Name", "Shape_Area_ha")], by = "Name") %>% 
   mutate(area = area_ha / Shape_Area_ha * 100,
          Shape_Area_ha = NULL,
          area_ha = NULL)
 
+beskyttet.natur.total <- beskyttet.natur.df.clean %>% 
+  group_by(Name) %>% summarise(beskyttet.natur.total = sum(area))
+
 beskyttet.natur.df.wide <- beskyttet.natur.df.clean %>%
   arrange(beskyttelse) %>% 
   pivot_wider(names_from = beskyttelse, values_from = area) %>% 
-  mutate(across(everything(), ~replace_na(.x, 0)))
+  mutate(across(everything(), ~replace_na(.x, 0))) %>% 
+  left_join(beskyttet.natur.total, by = "Name")
 
 df <- df %>% left_join(beskyttet.natur.df.wide)
 
@@ -167,12 +179,14 @@ ogrListLayers("O:/AUIT_Geodata/Denmark/Digital_elevation_models/Lidar/DHM_2014.g
 dhm.mosaic <- arc.open("O:/AUIT_Geodata/Denmark/Digital_elevation_models/Lidar/DHM_2014.gdb/Terrain_2014_resample_10m")
 dhm.mosaic <- arc.raster(dhm.mosaic)
 dhm <- as.raster(dhm.mosaic)
-crs(dhm)
+all.equal(crs(dhm), crs(areas))
 
 names <- areas$Name
 dhm.res <- data.frame(Names = names)
-n <- nrow(names)
+n <- nrow(dhm.res)
 
+timestamp()
+tic()
 for(i in 1:n) {
   print(paste0(names[i], " (", i, "/", n,")"))
   area_x <- areas[areas$Name == names[i], ]
@@ -191,15 +205,16 @@ for(i in 1:n) {
     m <- matrix(1, nc=w, nr=w)
     f <- focal(x, m, fun = sd)
   }
-  sd5 <- focal_sd(dhm_y)
+  sd3 <- focal_sd(dhm_y)
   dhm.res$sd3.median[i] <- median(sd3[], na.rm = T)
   dhm.res$sd3.q975[i] <- quantile(sd3[], probs = c(0.975), na.rm = TRUE)
   
   # Slope
   slope <- terrain(dhm_y, opt = "slope", unit = "degrees")
   steep.pct <- mean(na.omit(slope[]) > 15) * 100
-  dhm.res$steep.pct[i]
+  dhm.res$steep.pct[i] <- steep.pct
 }
+toc()
 
 df <- bind_cols(df, dhm.res[-1])
 
@@ -214,6 +229,8 @@ names <- areas$Name
 score.res <- data.frame(Names = names)
 n <- length(names)
 
+timestamp()
+tic()
 for(i in 1:n) {
   print(paste0(names[i], " (", i, "/", n,")"))
   area_x <- areas[areas$Name == names[i], ]
@@ -233,6 +250,7 @@ for(i in 1:n) {
   score.res$bioscore.max[i] <-  max(bioscore_y[], na.rm = T)
   score.res$bioscore.sd[i] <-  sd(bioscore_y[], na.rm = T)
 }
+toc()
 df <- bind_cols(df, score.res[-1])
 
 
@@ -242,23 +260,28 @@ df <- bind_cols(df, score.res[-1])
 res <- data.frame(Names = areas$Name)
 n <- nrow(res)
 
+timestamp()
+tic()
 for(i in 1:n) {
   print(paste0(res$Names[i], " (", i, "/", n,")"))
   
   blob <- st_buffer(areas[i,], 1000)
   buffer <- st_difference(blob, areas[i,])
   
-  n2000lys.i <- st_intersection(buffer[1], n2000lys)
-  n2000skov.i <- st_intersection(buffer[1], n2000skov)
-  p3_natur.i <- st_intersection(buffer[1], p3_natur) %>% filter(p3_natur != "Sø")
-  skov25.i <- st_intersection(buffer[1], skov25)
+  n2000lys.i <- st_intersection(buffer[1], n2000lys) %>% st_difference
+  n2000skov.i <- st_intersection(buffer[1], n2000skov) %>% st_difference
+  p3_natur.i <- st_intersection(buffer[1], p3_natur) %>% filter(p3_natur != "Sø") %>% st_difference
+  skov25.i <- st_intersection(buffer[1], skov25) %>% st_difference
   
-  n2000 <- union_arc_style(n2000lys.i, n2000skov.i)->a
-  p.natur <- union_arc_style(p3_natur.i, skov25.i)->b
-  # beskyttet.natur <- union_arc_style(n2000, p.natur)
+  n2000 <- union_arc_style(n2000lys.i, n2000skov.i)
+  p.natur <- union_arc_style(p3_natur.i, skov25.i) %>% st_buffer(., 0)
   
   n2000.union <- st_buffer(st_union(n2000), 0)
-  p.natur.minus.2000 <- st_difference(p.natur, n2000.union)
+  if(length(n2000.union) > 0) {
+    p.natur.minus.2000 <- st_difference(p.natur, n2000.union)
+  } else {
+    p.natur.minus.2000 <- p.natur
+  }
   
   beskyttet.natur <- bind_rows(n2000, p.natur.minus.2000)
   
@@ -284,19 +307,83 @@ for(i in 1:n) {
   bioscore_x <- crop(bioscore, buffer)
   bioscore_y <- mask(bioscore_x, buffer)
 
-  res$buffer.artsscore.median[i] <- median(artsscore_y[], na.rm = T)
-  res$buffer.artsscore.max[i] <- max(artsscore_y[], na.rm = T)
-  res$buffer.artsscore.sd[i] <- sd(artsscore_y[], na.rm = T)
+  res$buffer1000.artsscore.median[i] <- median(artsscore_y[], na.rm = T)
+  res$buffer1000.artsscore.max[i] <- max(artsscore_y[], na.rm = T)
+  res$buffer1000.artsscore.sd[i] <- sd(artsscore_y[], na.rm = T)
   
-  res$buffer.bioscore.median[i] <- median(bioscore_y[], na.rm = T)
-  res$buffer.bioscore.max[i] <-  max(bioscore_y[], na.rm = T)
-  res$buffer.bioscore.sd[i] <-  sd(bioscore_y[], na.rm = T)
+  res$buffer1000.bioscore.median[i] <- median(bioscore_y[], na.rm = T)
+  res$buffer1000.bioscore.max[i] <-  max(bioscore_y[], na.rm = T)
+  res$buffer1000.bioscore.sd[i] <-  sd(bioscore_y[], na.rm = T)
 }
+toc()
 df <- bind_cols(df, res[-1])
 
+
+
+# 5000 m ------------------------------------------------------------------
+res <- data.frame(Names = areas$Name)
+n <- nrow(res)
+
+timestamp()
+tic()
+for(i in 1:n) {
+  print(paste0(res$Names[i], " (", i, "/", n,")"))
+  
+  blob <- st_buffer(areas[i,], 5000)
+  buffer <- st_difference(blob, areas[i,])
+  
+  n2000lys.i <- st_intersection(buffer[1], n2000lys) %>% st_difference
+  n2000skov.i <- st_intersection(buffer[1], n2000skov) %>% st_difference
+  p3_natur.i <- st_intersection(buffer[1], p3_natur) %>% filter(p3_natur != "Sø") %>% st_difference
+  skov25.i <- st_intersection(buffer[1], skov25) %>% st_difference
+  
+  n2000 <- union_arc_style(n2000lys.i, n2000skov.i)
+  p.natur <- union_arc_style(p3_natur.i, skov25.i) %>% st_buffer(., 0)
+  
+  n2000.union <- st_buffer(st_union(n2000), 0)
+  if(length(n2000.union) > 0) {
+    p.natur.minus.2000 <- st_difference(p.natur, n2000.union)
+  } else {
+    p.natur.minus.2000 <- p.natur
+  }
+  
+  beskyttet.natur <- bind_rows(n2000, p.natur.minus.2000)
+  
+  beskyttet.natur.df <- beskyttet.natur %>% 
+    bind_cols(area = drop_units(st_area(beskyttet.natur))) %>% 
+    st_drop_geometry() %>%
+    remove_rownames()
+  
+  res$buffer.beskyttet.natur[i] <- beskyttet.natur.df %>% 
+    mutate(n2000lys = ifelse(!is.na(n2000lys), paste0("n2000lys_", n2000lys), NA),
+           n2000skov = ifelse(!is.na(n2000skov), paste0("n2000skov_", n2000skov), NA),
+           p3_natur = ifelse(!is.na(p3_natur), paste0("p3_natur_", p3_natur), NA),
+           skov25 = ifelse(!is.na(skov25), paste0("skov25_", skov25), NA)) %>% 
+    transmute(Name, 
+              beskyttelse = coalesce(n2000lys, n2000skov, p3_natur, skov25),
+              area) %>% 
+    group_by(Name) %>% 
+    summarise(area = sum(area)/drop_units(st_area(buffer)) * 100) %>% 
+    pull(area)
+  
+  artsscore_x <- crop(artsscore, buffer)
+  artsscore_y <- mask(artsscore_x, buffer)
+  bioscore_x <- crop(bioscore, buffer)
+  bioscore_y <- mask(bioscore_x, buffer)
+  
+  res$buffer5000.artsscore.median[i] <- median(artsscore_y[], na.rm = T)
+  res$buffer5000.artsscore.max[i] <- max(artsscore_y[], na.rm = T)
+  res$buffer5000.artsscore.sd[i] <- sd(artsscore_y[], na.rm = T)
+  
+  res$buffer5000.bioscore.median[i] <- median(bioscore_y[], na.rm = T)
+  res$buffer5000.bioscore.max[i] <-  max(bioscore_y[], na.rm = T)
+  res$buffer5000.bioscore.sd[i] <-  sd(bioscore_y[], na.rm = T)
+}
+toc()
+df <- bind_cols(df, res[-1])
 
 # Write final output of dataset -------------------------------------------
 df[-1] <- round(df[-1], 2)
 df$Name <- str_replace_all(df$Name, ",", " -")
 
-write_excel_csv(df, "O:/Nat_Ecoinformatics/C_Write/_Proj/NaturNationalparker_au233076_au135847/output/result.csv")
+write_excel_csv(df, "O:/Nat_Ecoinformatics/C_Write/_Proj/NaturNationalparker_au233076_au135847/output/result12072021.csv")
