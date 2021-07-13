@@ -286,7 +286,7 @@ for(i in 1:n) {
   beskyttet.natur <- bind_rows(n2000, p.natur.minus.2000)
   
   beskyttet.natur.df <- beskyttet.natur %>% 
-    bind_cols(area = drop_units(st_area(beskyttet.natur))) %>% 
+    bind_cols(area = as.numeric(st_area(beskyttet.natur))) %>% 
     st_drop_geometry() %>%
     remove_rownames()
   
@@ -299,7 +299,7 @@ for(i in 1:n) {
               beskyttelse = coalesce(n2000lys, n2000skov, p3_natur, skov25),
               area) %>% 
     group_by(Name) %>% 
-    summarise(area = sum(area)/drop_units(st_area(buffer)) * 100) %>% 
+    summarise(area = sum(area)/as.numeric(st_area(buffer)) * 100) %>% 
     pull(area)
   
   artsscore_x <- crop(artsscore, buffer)

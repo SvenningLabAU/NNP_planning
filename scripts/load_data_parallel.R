@@ -26,7 +26,7 @@ if(file.exists("builds/dhm.rds")) {
 }
 
 library(doSNOW)
-cluster.size <- 15
+cluster.size <- 11
 cl <- parallel::makeCluster(cluster.size)
 registerDoSNOW(cl)
 
