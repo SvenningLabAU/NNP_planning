@@ -190,6 +190,13 @@ df <- left_join(df, intersect)
 
 
 # Terrain data ------------------------------------------------------------
+names <- areas$Name
+n <- length(names)
+
+pb <- txtProgressBar(max = n, style = 3)
+opts <- list(progress = function(n) setTxtProgressBar(pb, n))
+
+
 # Load current maps
 timestamp()
 tic()
