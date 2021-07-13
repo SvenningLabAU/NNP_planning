@@ -205,34 +205,34 @@ dhm.res <- foreach(i=1:n,
                    .combine = bind_rows,
                    .inorder = TRUE,
                    .options.snow = opts) %dopar% {
-                    area_x <- areas[areas$Name == names[i], ]
-                    dhm_x <- crop(dhm, area_x)
-                    dhm_y <- mask(dhm_x, area_x)
-                    dhm.res <- c()
-
-                    dhm.res$dtm.range <- diff(range(dhm_y[], na.rm = T))
-                    dhm.res$dtm.sd <- sd(dhm_y[], na.rm = T)
-
-                    tri <- terrain(dhm_y, opt = "TRI")
-                    dhm.res$TRI.median <- median(tri[], na.rm = T)
-                    dhm.res$TRI.q975 <- quantile(tri[], probs = c(0.975), na.rm = TRUE)
-
-                    # SD for 3 neigbourhood
-                    focal_sd <- function(x, w = 3) {
-                      m <- matrix(1, nc = w, nr = w)
-                      f <- focal(x, m, fun = sd)
-                    }
-                    sd3 <- focal_sd(dhm_y)
-                    dhm.res$sd3.median <- median(sd3[], na.rm = T)
-                    dhm.res$sd3.q975 <- quantile(sd3[], probs = c(0.975), na.rm = TRUE)
-
-                    # Slope
-                    slope <- terrain(dhm_y, opt = "slope", unit = "degrees")
-                    steep.pct <- mean(na.omit(slope[]) > 15) * 100
-                    dhm.res$steep.pct <- steep.pct
-
-                    return(dhm.res)
-}
+                     area_x <- areas[areas$Name == names[i], ]
+                     dhm_x <- crop(dhm, area_x)
+                     dhm_y <- mask(dhm_x, area_x)
+                     dhm.res <- c()
+                     
+                     dhm.res$dtm.range <- diff(range(dhm_y[], na.rm = T))
+                     dhm.res$dtm.sd <- sd(dhm_y[], na.rm = T)
+                     
+                     tri <- terrain(dhm_y, opt = "TRI")
+                     dhm.res$TRI.median <- median(tri[], na.rm = T)
+                     dhm.res$TRI.q975 <- quantile(tri[], probs = c(0.975), na.rm = TRUE)
+                     
+                     # SD for 3 neigbourhood
+                     focal_sd <- function(x, w = 3) {
+                       m <- matrix(1, nc = w, nr = w)
+                       f <- focal(x, m, fun = sd)
+                     }
+                     sd3 <- focal_sd(dhm_y)
+                     dhm.res$sd3.median <- median(sd3[], na.rm = T)
+                     dhm.res$sd3.q975 <- quantile(sd3[], probs = c(0.975), na.rm = TRUE)
+                     
+                     # Slope
+                     slope <- terrain(dhm_y, opt = "slope", unit = "degrees")
+                     steep.pct <- mean(na.omit(slope[]) > 15) * 100
+                     dhm.res$steep.pct <- steep.pct
+                     
+                     return(dhm.res)
+                   }
 toc()
 
 df <- bind_cols(df, dhm.res)
@@ -251,30 +251,30 @@ n <- length(names)
 timestamp()
 tic()
 score.res <- foreach(i=1:n,                         
-                   .packages=c('raster', 'tidyverse', 'sf'), 
-                   .combine = bind_rows,
-                   .inorder = TRUE,
-                   .options.snow = opts) %dopar% {
-                     score.res <- c()
-                    area_x <- areas[areas$Name == names[i], ]
-                    artsscore_x <- crop(artsscore, area_x)
-                    artsscore_y <- mask(artsscore_x, area_x)
-                    
-                    bioscore_x <- crop(bioscore, area_x)
-                    bioscore_y <- mask(bioscore_x, area_x)
-                    
-                    # plot(stack(artsscore_y, bioscore_y))
-                    
-                    score.res$artsscore.median <- median(artsscore_y[], na.rm = T)
-                    score.res$artsscore.max <- max(artsscore_y[], na.rm = T)
-                    score.res$artsscore.sd <- sd(artsscore_y[], na.rm = T)
-                    
-                    score.res$bioscore.median <- median(bioscore_y[], na.rm = T)
-                    score.res$bioscore.max <-  max(bioscore_y[], na.rm = T)
-                    score.res$bioscore.sd <-  sd(bioscore_y[], na.rm = T)
-                    
-                    return(score.res)
-}
+                     .packages=c('raster', 'tidyverse', 'sf'), 
+                     .combine = bind_rows,
+                     .inorder = TRUE,
+                     .options.snow = opts) %dopar% {
+                       score.res <- c()
+                       area_x <- areas[areas$Name == names[i], ]
+                       artsscore_x <- crop(artsscore, area_x)
+                       artsscore_y <- mask(artsscore_x, area_x)
+                       
+                       bioscore_x <- crop(bioscore, area_x)
+                       bioscore_y <- mask(bioscore_x, area_x)
+                       
+                       # plot(stack(artsscore_y, bioscore_y))
+                       
+                       score.res$artsscore.median <- median(artsscore_y[], na.rm = T)
+                       score.res$artsscore.max <- max(artsscore_y[], na.rm = T)
+                       score.res$artsscore.sd <- sd(artsscore_y[], na.rm = T)
+                       
+                       score.res$bioscore.median <- median(bioscore_y[], na.rm = T)
+                       score.res$bioscore.max <-  max(bioscore_y[], na.rm = T)
+                       score.res$bioscore.sd <-  sd(bioscore_y[], na.rm = T)
+                       
+                       return(score.res)
+                     }
 toc()
 df <- bind_cols(df, score.res)
 
@@ -286,40 +286,40 @@ gc()
 timestamp()
 tic()
 res1000 <- foreach(i=1:n,                         
-                     .packages=c('sf', 'tidyverse'), 
-                     .combine = bind_rows,
-                     .inorder = TRUE,
-                     .options.snow = opts) %dopar% {
-                       res <- c()
-  blob <- st_buffer(areas[i,], 1000)
-  buffer <- st_difference(blob, areas[i,])
-  
-  n2000lys.i <- st_intersection(buffer[1], n2000lys) %>% st_union
-  n2000skov.i <- st_intersection(buffer[1], n2000skov) %>% st_union
-  p3_natur.i <- st_intersection(buffer[1], p3_natur) %>% filter(p3_natur != "Sø") %>% st_union
-  skov25.i <- st_intersection(buffer[1], skov25) %>% st_union
-  
-  protected.area <- c(n2000lys.i, n2000skov.i, p3_natur.i, skov25.i) %>% 
-    st_union %>% 
-    st_area
-  
-  res$buffer1000.beskyttet.natur <- as.numeric(protected.area/st_area(buffer) * 100)
-  
-  artsscore_x <- crop(artsscore, buffer)
-  artsscore_y <- mask(artsscore_x, buffer)
-  bioscore_x <- crop(bioscore, buffer)
-  bioscore_y <- mask(bioscore_x, buffer)
-
-  res$buffer1000.artsscore.median <- median(artsscore_y[], na.rm = T)
-  res$buffer1000.artsscore.max <- max(artsscore_y[], na.rm = T)
-  res$buffer1000.artsscore.sd <- sd(artsscore_y[], na.rm = T)
-  
-  res$buffer1000.bioscore.median <- median(bioscore_y[], na.rm = T)
-  res$buffer1000.bioscore.max <-  max(bioscore_y[], na.rm = T)
-  res$buffer1000.bioscore.sd <-  sd(bioscore_y[], na.rm = T)
-  
-  return(res)
-}
+                   .packages=c('sf', 'tidyverse'), 
+                   .combine = bind_rows,
+                   .inorder = TRUE,
+                   .options.snow = opts) %dopar% {
+                     res <- c()
+                     blob <- st_buffer(areas[i,], 1000)
+                     buffer <- st_difference(blob, areas[i,])
+                     
+                     n2000lys.i <- st_intersection(buffer[1], n2000lys) %>% st_union
+                     n2000skov.i <- st_intersection(buffer[1], n2000skov) %>% st_union
+                     p3_natur.i <- st_intersection(buffer[1], p3_natur) %>% filter(p3_natur != "Sø") %>% st_union
+                     skov25.i <- st_intersection(buffer[1], skov25) %>% st_union
+                     
+                     protected.area <- c(n2000lys.i, n2000skov.i, p3_natur.i, skov25.i) %>% 
+                       st_union %>% 
+                       st_area
+                     
+                     res$buffer1000.beskyttet.natur <- as.numeric(protected.area/st_area(buffer) * 100)
+                     
+                     artsscore_x <- crop(artsscore, buffer)
+                     artsscore_y <- mask(artsscore_x, buffer)
+                     bioscore_x <- crop(bioscore, buffer)
+                     bioscore_y <- mask(bioscore_x, buffer)
+                     
+                     res$buffer1000.artsscore.median <- median(artsscore_y[], na.rm = T)
+                     res$buffer1000.artsscore.max <- max(artsscore_y[], na.rm = T)
+                     res$buffer1000.artsscore.sd <- sd(artsscore_y[], na.rm = T)
+                     
+                     res$buffer1000.bioscore.median <- median(bioscore_y[], na.rm = T)
+                     res$buffer1000.bioscore.max <-  max(bioscore_y[], na.rm = T)
+                     res$buffer1000.bioscore.sd <-  sd(bioscore_y[], na.rm = T)
+                     
+                     return(res)
+                   }
 toc()
 df <- bind_cols(df, res1000)
 
@@ -330,41 +330,41 @@ gc()
 timestamp()
 tic()
 res5000 <- foreach(i=1:n,                         
-               .packages=c('sf', 'tidyverse'), 
-               .combine = bind_rows,
-               .inorder = TRUE,
-               .options.snow = opts) %dopar% {
-  res <- c()
-  
-  blob <- st_buffer(areas[i,], 5000)
-  buffer <- st_difference(blob, areas[i,])
-  
-  n2000lys.i <- st_intersection(buffer[1], n2000lys) %>% st_union
-  n2000skov.i <- st_intersection(buffer[1], n2000skov) %>% st_union
-  p3_natur.i <- st_intersection(buffer[1], p3_natur) %>% filter(p3_natur != "Sø") %>% st_union
-  skov25.i <- st_intersection(buffer[1], skov25) %>% st_union
-  
-  protected.area <- c(n2000lys.i, n2000skov.i, p3_natur.i, skov25.i) %>% 
-    st_union %>% 
-    st_area
-
-  res$buffer5000.beskyttet.natur <- as.numeric(protected.area/st_area(buffer) * 100)
-  
-  artsscore_x <- crop(artsscore, buffer)
-  artsscore_y <- mask(artsscore_x, buffer)
-  bioscore_x <- crop(bioscore, buffer)
-  bioscore_y <- mask(bioscore_x, buffer)
-  
-  res$buffer5000.artsscore.median <- median(artsscore_y[], na.rm = T)
-  res$buffer5000.artsscore.max <- max(artsscore_y[], na.rm = T)
-  res$buffer5000.artsscore.sd <- sd(artsscore_y[], na.rm = T)
-  
-  res$buffer5000.bioscore.median <- median(bioscore_y[], na.rm = T)
-  res$buffer5000.bioscore.max <-  max(bioscore_y[], na.rm = T)
-  res$buffer5000.bioscore.sd <-  sd(bioscore_y[], na.rm = T)
-  
-  return(res)
-}
+                   .packages=c('sf', 'tidyverse'), 
+                   .combine = bind_rows,
+                   .inorder = TRUE,
+                   .options.snow = opts) %dopar% {
+                     res <- c()
+                     
+                     blob <- st_buffer(areas[i,], 5000)
+                     buffer <- st_difference(blob, areas[i,])
+                     
+                     n2000lys.i <- st_intersection(buffer[1], n2000lys) %>% st_union
+                     n2000skov.i <- st_intersection(buffer[1], n2000skov) %>% st_union
+                     p3_natur.i <- st_intersection(buffer[1], p3_natur) %>% filter(p3_natur != "Sø") %>% st_union
+                     skov25.i <- st_intersection(buffer[1], skov25) %>% st_union
+                     
+                     protected.area <- c(n2000lys.i, n2000skov.i, p3_natur.i, skov25.i) %>% 
+                       st_union %>% 
+                       st_area
+                     
+                     res$buffer5000.beskyttet.natur <- as.numeric(protected.area/st_area(buffer) * 100)
+                     
+                     artsscore_x <- crop(artsscore, buffer)
+                     artsscore_y <- mask(artsscore_x, buffer)
+                     bioscore_x <- crop(bioscore, buffer)
+                     bioscore_y <- mask(bioscore_x, buffer)
+                     
+                     res$buffer5000.artsscore.median <- median(artsscore_y[], na.rm = T)
+                     res$buffer5000.artsscore.max <- max(artsscore_y[], na.rm = T)
+                     res$buffer5000.artsscore.sd <- sd(artsscore_y[], na.rm = T)
+                     
+                     res$buffer5000.bioscore.median <- median(bioscore_y[], na.rm = T)
+                     res$buffer5000.bioscore.max <-  max(bioscore_y[], na.rm = T)
+                     res$buffer5000.bioscore.sd <-  sd(bioscore_y[], na.rm = T)
+                     
+                     return(res)
+                   }
 toc()
 df <- bind_cols(df, res5000)
 
@@ -375,4 +375,4 @@ gc()
 df[-1] <- round(df[-1], 2)
 df$Name <- str_replace_all(df$Name, ",", " -")
 
-write_excel_csv(df, "O:/Nat_Ecoinformatics/C_Write/_Proj/NaturNationalparker_au233076_au135847/output/result13072021_v2.csv")
+write_excel_csv(df, "O:/Nat_Ecoinformatics/C_Write/_Proj/NaturNationalparker_au233076_au135847/output/result12072021.csv")
