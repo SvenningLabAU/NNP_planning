@@ -26,7 +26,7 @@ if(file.exists("builds/dhm.rds")) {
 }
 
 library(doSNOW)
-cluster.size <- 2
+cluster.size <- 15
 cl <- parallel::makeCluster(cluster.size)
 registerDoSNOW(cl)
 
@@ -49,7 +49,7 @@ areas <- st_make_valid(areas)
 
 # areas <- areas[which(areas$Name %in% c("Tipperne", "Vejers Plantage, sydlige del")), ]
 # areas <- areas[19, ]
-areas <- areas[1:2, ]
+# areas <- areas[1:2, ]
 
 # Plot
 # ggplot(areas) +
@@ -202,7 +202,7 @@ timestamp()
 tic()
 dhm.res <- foreach(i=1:n,                         
                    .packages=c('raster', 'tidyverse', 'sf'), 
-                   .combine = c,
+                   .combine = bind_rows,
                    .inorder = TRUE,
                    .options.snow = opts) %dopar% {
                     area_x <- areas[areas$Name == names[i], ]
