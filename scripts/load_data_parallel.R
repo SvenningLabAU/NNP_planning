@@ -37,7 +37,7 @@ areas5 <- areas5 %>%
   transmute(Name = paste0("De5_", Bemark),
             Shape_Area_ha = as.numeric(st_area(areas5))/10000)
 
-areas.marianne <- st_read("O:/Nat_Ecoinformatics/C_Write/_Proj/NaturNationalparker_au233076_au135847/data/NNP/NNP_gennamgang0707/NNP_gennemgang_0707.shp") %>% 
+areas.marianne <- st_read("O:/Nat_Ecoinformatics/C_Write/_Proj/NaturNationalparker_au233076_au135847/data/NNP/NNP_arealer/NNP_arealer.shp") %>% 
   filter(gennemgang %in% 1:2)
 areas.marianne <- st_transform(areas.marianne, "+proj=utm +zone=32 +ellps=GRS80 +units=m +no_defs")
 areas.marianne <- areas.marianne %>% 
@@ -282,7 +282,7 @@ gc()
 
 
 # 1000 m ------------------------------------------------------------------
-
+# which(areas$Name == "Søskoven") # test
 timestamp()
 tic()
 res1000 <- foreach(i=1:n,                         
