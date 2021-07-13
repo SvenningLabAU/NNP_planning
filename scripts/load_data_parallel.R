@@ -294,39 +294,16 @@ res1000 <- foreach(i=1:n,
   blob <- st_buffer(areas[i,], 1000)
   buffer <- st_difference(blob, areas[i,])
   
-  n2000lys.i <- st_intersection(buffer[1], n2000lys) %>% st_difference
-  n2000skov.i <- st_intersection(buffer[1], n2000skov) %>% st_difference
-  p3_natur.i <- st_intersection(buffer[1], p3_natur) %>% filter(p3_natur != "Sø") %>% st_difference
-  skov25.i <- st_intersection(buffer[1], skov25) %>% st_difference
+  n2000lys.i <- st_intersection(buffer[1], n2000lys) %>% st_union
+  n2000skov.i <- st_intersection(buffer[1], n2000skov) %>% st_union
+  p3_natur.i <- st_intersection(buffer[1], p3_natur) %>% filter(p3_natur != "Sø") %>% st_union
+  skov25.i <- st_intersection(buffer[1], skov25) %>% st_union
   
-  n2000 <- union_arc_style(n2000lys.i, n2000skov.i)
-  p.natur <- union_arc_style(p3_natur.i, skov25.i) %>% st_buffer(., 0)
+  protected.area <- c(n2000lys.i, n2000skov.i, p3_natur.i, skov25.i) %>% 
+    st_union %>% 
+    st_area
   
-  n2000.union <- st_buffer(st_union(n2000), 0)
-  if(length(n2000.union) > 0) {
-    p.natur.minus.2000 <- st_difference(p.natur, n2000.union)
-  } else {
-    p.natur.minus.2000 <- p.natur
-  }
-  
-  beskyttet.natur <- bind_rows(n2000, p.natur.minus.2000)
-  
-  beskyttet.natur.df <- beskyttet.natur %>% 
-    bind_cols(area = as.numeric(st_area(beskyttet.natur))) %>% 
-    st_drop_geometry() %>%
-    remove_rownames()
-  
-  res$buffer1000.beskyttet.natur <- beskyttet.natur.df %>% 
-    mutate(n2000lys = ifelse(!is.na(n2000lys), paste0("n2000lys_", n2000lys), NA),
-           n2000skov = ifelse(!is.na(n2000skov), paste0("n2000skov_", n2000skov), NA),
-           p3_natur = ifelse(!is.na(p3_natur), paste0("p3_natur_", p3_natur), NA),
-           skov25 = ifelse(!is.na(skov25), paste0("skov25_", skov25), NA)) %>% 
-    transmute(Name, 
-              beskyttelse = coalesce(n2000lys, n2000skov, p3_natur, skov25),
-              area) %>% 
-    group_by(Name) %>% 
-    summarise(area = sum(area)/as.numeric(st_area(buffer)) * 100) %>% 
-    pull(area)
+  res$buffer1000.beskyttet.natur <- as.numeric(protected.area/st_area(buffer) * 100)
   
   artsscore_x <- crop(artsscore, buffer)
   artsscore_y <- mask(artsscore_x, buffer)
@@ -357,44 +334,21 @@ res5000 <- foreach(i=1:n,
                .combine = bind_rows,
                .inorder = TRUE,
                .options.snow = opts) %dopar% {
-                 res <- c()
+  res <- c()
   
   blob <- st_buffer(areas[i,], 5000)
   buffer <- st_difference(blob, areas[i,])
   
-  n2000lys.i <- st_intersection(buffer[1], n2000lys) %>% st_difference
-  n2000skov.i <- st_intersection(buffer[1], n2000skov) %>% st_difference
-  p3_natur.i <- st_intersection(buffer[1], p3_natur) %>% filter(p3_natur != "Sø") %>% st_difference
-  skov25.i <- st_intersection(buffer[1], skov25) %>% st_difference
+  n2000lys.i <- st_intersection(buffer[1], n2000lys) %>% st_union
+  n2000skov.i <- st_intersection(buffer[1], n2000skov) %>% st_union
+  p3_natur.i <- st_intersection(buffer[1], p3_natur) %>% filter(p3_natur != "Sø") %>% st_union
+  skov25.i <- st_intersection(buffer[1], skov25) %>% st_union
   
-  n2000 <- union_arc_style(n2000lys.i, n2000skov.i)
-  p.natur <- union_arc_style(p3_natur.i, skov25.i) %>% st_buffer(., 0)
-  
-  n2000.union <- st_buffer(st_union(n2000), 0)
-  if(length(n2000.union) > 0) {
-    p.natur.minus.2000 <- st_difference(p.natur, n2000.union)
-  } else {
-    p.natur.minus.2000 <- p.natur
-  }
-  
-  beskyttet.natur <- bind_rows(n2000, p.natur.minus.2000)
-  
-  beskyttet.natur.df <- beskyttet.natur %>% 
-    bind_cols(area = as.numeric(st_area(beskyttet.natur))) %>% 
-    st_drop_geometry() %>%
-    remove_rownames()
-  
-  res$buffer5000.beskyttet.natur <- beskyttet.natur.df %>% 
-    mutate(n2000lys = ifelse(!is.na(n2000lys), paste0("n2000lys_", n2000lys), NA),
-           n2000skov = ifelse(!is.na(n2000skov), paste0("n2000skov_", n2000skov), NA),
-           p3_natur = ifelse(!is.na(p3_natur), paste0("p3_natur_", p3_natur), NA),
-           skov25 = ifelse(!is.na(skov25), paste0("skov25_", skov25), NA)) %>% 
-    transmute(Name, 
-              beskyttelse = coalesce(n2000lys, n2000skov, p3_natur, skov25),
-              area) %>% 
-    group_by(Name) %>% 
-    summarise(area = sum(area)/as.numeric(st_area(buffer)) * 100) %>% 
-    pull(area)
+  protected.area <- c(n2000lys.i, n2000skov.i, p3_natur.i, skov25.i) %>% 
+    st_union %>% 
+    st_area
+
+  res$buffer5000.beskyttet.natur <- as.numeric(protected.area/st_area(buffer) * 100)
   
   artsscore_x <- crop(artsscore, buffer)
   artsscore_y <- mask(artsscore_x, buffer)
