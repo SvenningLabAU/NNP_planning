@@ -65,7 +65,7 @@ res <- foreach(i=1:n,
                .packages=c('raster', 'tidyverse', 'sf'), 
                .combine = bind_rows,
                .inorder = FALSE,
-               .options.snow = opts) %do% {
+               .options.snow = opts) %dopar% {
                  # Make a results list
                  res <- c()
                  res$Name <- names[i]
