@@ -44,9 +44,17 @@ areas.marianne <- areas.marianne %>%
   transmute(Name = skovnavn,
             Shape_Area_ha = as.numeric(st_area(areas.marianne))/10000)
 
-areas <- bind_rows(areas5, areas.marianne)
+areas.rune <-  st_read("O:/Nat_Ecoinformatics/C_Write/_Proj/NaturNationalparker_au233076_au135847/data/NNP/NNP_Engelbreth/NNP_Engelbreth.shp")
+areas.rune <- st_transform(areas.rune, "+proj=utm +zone=32 +ellps=GRS80 +units=m +no_defs")
+areas.rune <- areas.rune %>% 
+  transmute(Name = paste0("Engelbreth_", Skovnavn),
+            Shape_Area_ha = as.numeric(st_area(areas.rune))/10000)
+
+
+areas <- bind_rows(areas5, areas.marianne, areas.rune)
 areas <- st_make_valid(areas)
 
+# Subset for testing:
 # areas <- areas[which(areas$Name %in% c("Tipperne", "Vejers Plantage, sydlige del")), ]
 # areas <- areas[19, ]
 # areas <- areas[1:2, ]
@@ -58,6 +66,12 @@ areas <- st_make_valid(areas)
 # Make a results table
 df <- st_drop_geometry(areas)
 
+# Prep cluster:
+names <- areas$Name
+n <- length(names)
+
+pb <- txtProgressBar(max = n, style = 3)
+opts <- list(progress = function(n) setTxtProgressBar(pb, n))
 
 # Load Jordart data -------------------------------------------------------
 jordart <- st_read("O:/Nat_Ecoinformatics/C_Write/_Proj/NaturNationalparker_au233076_au135847/data/ny_jord/kort overførelse.shp")
@@ -190,13 +204,6 @@ df <- left_join(df, intersect)
 
 
 # Terrain data ------------------------------------------------------------
-names <- areas$Name
-n <- length(names)
-
-pb <- txtProgressBar(max = n, style = 3)
-opts <- list(progress = function(n) setTxtProgressBar(pb, n))
-
-
 # Load current maps
 timestamp()
 tic()
@@ -209,6 +216,7 @@ dhm.res <- foreach(i=1:n,
                     dhm_x <- crop(dhm, area_x)
                     dhm_y <- mask(dhm_x, area_x)
                     dhm.res <- c()
+                    dhm.res$Name = names[i]
 
                     dhm.res$dtm.range <- diff(range(dhm_y[], na.rm = T))
                     dhm.res$dtm.sd <- sd(dhm_y[], na.rm = T)
@@ -235,7 +243,7 @@ dhm.res <- foreach(i=1:n,
 }
 toc()
 
-df <- bind_cols(df, dhm.res)
+df <- left_join(df, dhm.res, by = "Name")
 
 gc()
 
@@ -245,9 +253,6 @@ crs(artsscore) <- crs(areas)
 bioscore <- raster("O:/Nat_Ecoinformatics/C_Write/_Proj/NaturNationalparker_au233076_au135847/data/Biodiversitetskort_arcgis/bioscore")
 crs(bioscore) <- crs(areas)
 
-names <- areas$Name
-n <- length(names)
-
 timestamp()
 tic()
 score.res <- foreach(i=1:n,                         
@@ -256,6 +261,7 @@ score.res <- foreach(i=1:n,
                    .inorder = TRUE,
                    .options.snow = opts) %dopar% {
                      score.res <- c()
+                     score.res$Name <- names[i]
                     area_x <- areas[areas$Name == names[i], ]
                     artsscore_x <- crop(artsscore, area_x)
                     artsscore_y <- mask(artsscore_x, area_x)
@@ -276,9 +282,59 @@ score.res <- foreach(i=1:n,
                     return(score.res)
 }
 toc()
-df <- bind_cols(df, score.res)
+df <- left_join(df, score.res, by = "Name")
 
 gc()
+
+
+
+# Oversvømmelse -----------------------------------------------------------
+# Load lavbundskort
+lavbundskort <- st_read("O:/Nat_Ecoinformatics/C_Write/_Proj/NaturNationalparker_au233076_au135847/data/Tekstur_2014/Tekstur2014.shp")
+lavbundskort <- st_transform(lavbundskort, st_crs(areas))
+lavbundskort.i <- lavbundskort %>% st_intersection(areas[1], lavbundskort)
+
+lavbundskort.summary <- lavbundskort.i %>% 
+  mutate(area_ha = as.numeric(st_area(.)/10000)) %>% 
+  st_drop_geometry() %>% 
+  group_by(Name) %>% 
+  summarise(area_ha = sum(area_ha)) %>% 
+  left_join(df %>% select(Name, Shape_Area_ha)) %>% 
+  transmute(Name,
+            lavbunds.jord.pct = area_ha/Shape_Area_ha * 100)
+
+df <- left_join(df, lavbundskort.summary)
+
+
+# Naturalness and Openness  ----------------------------------------------------
+# Load skovkort
+litra <- st_read("O:/Nat_Ecoinformatics/C_Write/_Proj/NaturNationalparker_au233076_au135847/data/SABA_litra/SABA_litra.shp")
+litra <- st_transform(litra, st_crs(areas))
+litra.i <- litra %>% st_intersection(areas[1], litra)
+
+litra.tolkning <- readxl::read_xlsx("O:/Nat_Ecoinformatics/C_Write/_Proj/NaturNationalparker_au233076_au135847/data/anvendelse_SABA_litra.xlsx")
+litra.i <- litra.i %>% transmute(Name, Anvendelseskode = hovedanven) %>% left_join(litra.tolkning, by = "Anvendelseskode")
+
+natualness <- litra.i %>% 
+  mutate(area_ha = as.numeric(st_area(.)/10000),
+         natural_area_ha = Naturligt * area_ha,
+         not_natural_area_ha = Ikke_hjemmehørende * area_ha,
+         Skov_closed_area_ha = Skov_closed * area_ha,
+         Open_area_ha = Open * area_ha) %>% 
+  st_drop_geometry() %>% 
+  group_by(Name) %>% 
+  summarise(natural_area_ha = sum(natural_area_ha),
+            not_natural_area_ha = sum(not_natural_area_ha),
+            Skov_closed_area_ha = sum(Skov_closed_area_ha),
+            Open_area_ha = sum(Open_area_ha)) %>% 
+  left_join(df %>% select(Name, Shape_Area_ha)) %>% 
+  transmute(Name,
+            natualness.pct = natural_area_ha/Shape_Area_ha * 100,
+            not_natural.pct = not_natural_area_ha/Shape_Area_ha * 100,
+            Skov_closed.pct = Skov_closed_area_ha/Shape_Area_ha * 100,
+            Open_area.pct = Open_area_ha/Shape_Area_ha * 100)
+
+df <- left_join(df, natualness, by = "Name")
 
 
 # 1000 m ------------------------------------------------------------------
@@ -291,6 +347,7 @@ res1000 <- foreach(i=1:n,
                      .inorder = TRUE,
                      .options.snow = opts) %dopar% {
                        res <- c()
+                       res$Name <- names[i]
   blob <- st_buffer(areas[i,], 1000)
   buffer <- st_difference(blob, areas[i,])
   
@@ -321,7 +378,7 @@ res1000 <- foreach(i=1:n,
   return(res)
 }
 toc()
-df <- bind_cols(df, res1000)
+df <- left_join(df, res1000, by = "Name")
 
 gc()
 
@@ -335,6 +392,7 @@ res5000 <- foreach(i=1:n,
                .inorder = TRUE,
                .options.snow = opts) %dopar% {
   res <- c()
+  res$Name <- names[i]
   
   blob <- st_buffer(areas[i,], 5000)
   buffer <- st_difference(blob, areas[i,])
@@ -366,13 +424,18 @@ res5000 <- foreach(i=1:n,
   return(res)
 }
 toc()
-df <- bind_cols(df, res5000)
+df <- left_join(df, res5000, by = "Name")
 
 stopCluster(cl)
 gc()
 
 # Write final output of dataset -------------------------------------------
+# Round to two decimal places
 df[-1] <- round(df[-1], 2)
+# Replace NA with 0
+df[-1] <- df[-1] %>% mutate_all(coalesce, 0)
+# Change Names with commas to dash
 df$Name <- str_replace_all(df$Name, ",", " -")
 
+# Write output
 write_excel_csv(df, "O:/Nat_Ecoinformatics/C_Write/_Proj/NaturNationalparker_au233076_au135847/output/result13072021_v2.csv")
