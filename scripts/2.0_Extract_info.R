@@ -61,7 +61,6 @@ union_arc_style <<- function(a, b) {
 }
 
 # Start parallel ------------------------------------------------
-n = 3
 res <- foreach(i=1:n,
                .packages=c('raster', 'tidyverse', 'sf'), 
                .combine = bind_rows,
