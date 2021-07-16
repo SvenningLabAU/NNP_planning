@@ -107,9 +107,13 @@ res <- foreach(i=1:n,
                  n2000 <- union_arc_style(n2000lys.i, n2000skov.i)
                  p.natur <- union_arc_style(p3_natur.i, p25_skov.i)
 
-                 # Remove overlaps of p in n2000
-                 n2000.union <- st_buffer(st_union(n2000), 0)
-                 p.natur.minus.2000 <- st_difference(p.natur, n2000.union)
+                 if(nrow(n2000) > 0) {
+                   # Remove overlaps of p in n2000
+                   n2000.union <- st_buffer(st_union(n2000), 0)
+                   p.natur.minus.2000 <- st_difference(p.natur, n2000.union)
+                 } else {
+                   p.natur.minus.2000 <- p.natur
+                 }
                  
                  # Combine them all
                  beskyttet.natur <- bind_rows(n2000, p.natur.minus.2000)
