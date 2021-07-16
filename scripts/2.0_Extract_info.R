@@ -214,7 +214,9 @@ res <- foreach(i=1:n,
                    st_area %>% 
                    as.numeric
                  
-                 res$lavbund.pct = lavbund.area / park.area * 100
+                 res$lavbund.pct = ifelse(length(lavbund.area) > 0,
+                                          lavbund.area / park.area * 100,
+                                          0)
 
 
                  # Naturalness and Openness  ----------------------------------------------------
