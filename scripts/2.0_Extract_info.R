@@ -7,7 +7,6 @@ library(raster)
 library(tidyverse)
 library(sf)
 library(rgdal)
-library(moments)
 library(tictoc)
 library(doSNOW)
 
