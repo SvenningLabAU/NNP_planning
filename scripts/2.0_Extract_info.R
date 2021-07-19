@@ -51,11 +51,12 @@ union_arc_style <<- function(a, b) {
   b.only <- st_difference(b, a.union)
   
   # a and b overlap
-  a.b.overlap <- st_intersection(a, b[-1])
+  # st_buffer(., 0) removes lines and points and keeps only polygons
+  a.b.overlap <- st_intersection(a, b[-1]) %>% st_buffer(0)
   
   # Combine all areas
   union <- bind_rows(a.only, b.only, a.b.overlap)
-  
+
   return(union)
 }
 
@@ -97,10 +98,11 @@ res <- foreach(i=1:n,
                  # Find beskyttede natur arealer indenfor områderne
                  # - fjern eventuelle interne overlap for §3, 
                  #   for N2000 kan der være mosaikker så det kan ikke gøres her
-                 n2000lys.i <- st_intersection(area_x[1], n2000lys)
-                 n2000skov.i <- st_intersection(area_x[1], n2000skov)
-                 p3_natur.i <- st_intersection(area_x[1], p3_natur) %>% st_difference
-                 p25_skov.i <- st_intersection(area_x[1], p25_skov) %>% st_difference
+                 # st_buffer(., 0) removes lines and points and keeps only polygons
+                 n2000lys.i <- st_intersection(area_x[1], n2000lys) %>% st_buffer(0)
+                 n2000skov.i <- st_intersection(area_x[1], n2000skov) %>% st_buffer(0)
+                 p3_natur.i <- st_intersection(area_x[1], p3_natur) %>% st_difference %>% st_buffer(0)
+                 p25_skov.i <- st_intersection(area_x[1], p25_skov) %>% st_difference %>% st_buffer(0)
 
                  # Union (ArcStyle) the nature types
                  n2000 <- union_arc_style(n2000lys.i, n2000skov.i)
@@ -108,7 +110,6 @@ res <- foreach(i=1:n,
 
                  if(nrow(n2000) > 0) {
                    # Remove overlaps of p in n2000
-                   n2000.union <- st_buffer(st_union(n2000), 0)
                    p.natur.minus.2000 <- st_difference(p.natur, n2000.union)
                  } else {
                    p.natur.minus.2000 <- p.natur
