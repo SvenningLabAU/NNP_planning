@@ -202,10 +202,12 @@ res <- foreach(i=1:n,
                  
                  # Calculate score indexes
                  res$artsscore.median <- median(artsscore_mask[], na.rm = T)
+                 res$artsscore.mean <- mean(artsscore_mask[], na.rm = T)
                  res$artsscore.max <- max(artsscore_mask[], na.rm = T)
                  res$artsscore.sd <- sd(artsscore_mask[], na.rm = T)
                  
                  res$bioscore.median <- median(bioscore_mask[], na.rm = T)
+                 res$bioscore.mean <- mean(bioscore_mask[], na.rm = T)
                  res$bioscore.max <-  max(bioscore_mask[], na.rm = T)
                  res$bioscore.sd <-  sd(bioscore_mask[], na.rm = T)
                        
@@ -265,10 +267,12 @@ res <- foreach(i=1:n,
                  bioscore_mask <- mask(bioscore_crop, buffer)
                  
                  res$buffer1000.artsscore.median <- median(artsscore_mask[], na.rm = T)
+                 res$buffer1000.artsscore.mean <- mean(artsscore_mask[], na.rm = T)
                  res$buffer1000.artsscore.max <- max(artsscore_mask[], na.rm = T)
                  res$buffer1000.artsscore.sd <- sd(artsscore_mask[], na.rm = T)
                  
                  res$buffer1000.bioscore.median <- median(bioscore_mask[], na.rm = T)
+                 res$buffer1000.bioscore.mean <- mean(bioscore_mask[], na.rm = T)
                  res$buffer1000.bioscore.max <-  max(bioscore_mask[], na.rm = T)
                  res$buffer1000.bioscore.sd <-  sd(bioscore_mask[], na.rm = T)
                      
@@ -294,10 +298,12 @@ res <- foreach(i=1:n,
                  bioscore_mask <- mask(bioscore_crop, buffer)
                  
                  res$buffer5000.artsscore.median <- median(artsscore_mask[], na.rm = T)
+                 res$buffer5000.artsscore.mean <- mean(artsscore_mask[], na.rm = T)
                  res$buffer5000.artsscore.max <- max(artsscore_mask[], na.rm = T)
                  res$buffer5000.artsscore.sd <- sd(artsscore_mask[], na.rm = T)
                  
                  res$buffer5000.bioscore.median <- median(bioscore_mask[], na.rm = T)
+                 res$buffer5000.bioscore.mean <- mean(bioscore_mask[], na.rm = T)
                  res$buffer5000.bioscore.max <-  max(bioscore_mask[], na.rm = T)
                  res$buffer5000.bioscore.sd <-  sd(bioscore_mask[], na.rm = T)
                  
@@ -325,5 +331,5 @@ df$Name <- str_replace_all(df$Name, ",", " -")
 
 # Write output
 folder <- "O:/Nat_Ecoinformatics/C_Write/_Proj/NaturNationalparker_au233076_au135847/output/"
-name <- "result16072021_v2.csv"
+name <- "result19072021_v1.csv"
 write_excel_csv(df, paste(folder, name, sep = "/"))
