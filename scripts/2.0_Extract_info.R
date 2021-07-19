@@ -110,6 +110,7 @@ res <- foreach(i=1:n,
 
                  if(nrow(n2000) > 0) {
                    # Remove overlaps of p in n2000
+                   n2000.union <- st_union(n2000)
                    p.natur.minus.2000 <- st_difference(p.natur, n2000.union)
                  } else {
                    p.natur.minus.2000 <- p.natur
