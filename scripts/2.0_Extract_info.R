@@ -76,23 +76,6 @@ res <- foreach(i=1:n,
                  # Area of the park
                  park.area <- st_area(area_x) %>% as.numeric
 
-                 # Extract Jordart data -------------------------------------------------------
-                 jordart.i <- st_intersection(area_x, jordart)
-                 res.jord <- jordart.i %>%
-                   mutate(jord_area = st_area(.) %>% as.numeric) %>%
-                   st_drop_geometry() %>%
-                   group_by(Jordart) %>%
-                   summarise(area.pct = sum(jord_area) / park.area * 100) %>%
-                   pivot_wider(
-                     values_from = area.pct,
-                     names_from = Jordart,
-                     names_prefix = "jord_",
-                     values_fill = 0
-                   )
-                 
-                 # Add jordart res
-                 res <- bind_cols(res, res.jord)
-                 
                  # Beskyttet natur ---------------------------------------------------------
                  
                  # Find beskyttede natur arealer indenfor områderne
@@ -131,8 +114,8 @@ res <- foreach(i=1:n,
                    mutate(
                      n2000lys = ifelse(!is.na(n2000lys), paste0("n2000lys_", n2000lys), NA),
                      n2000skov = ifelse(!is.na(n2000skov), paste0("n2000skov_", n2000skov), NA),
-                     p3_natur = ifelse(!is.na(p3_natur), paste0("p3_natur_", p3_natur), NA),
-                     skov25 = ifelse(!is.na(p25_skov), paste0("skov25_", p25_skov), NA)
+                     p3_natur = ifelse(!is.na(p3_natur), paste0("p3natur_", p3_natur), NA),
+                     skov25 = ifelse(!is.na(p25_skov), paste0("p25skov_", p25_skov), NA)
                    ) %>%
                    transmute(beskyttelse = coalesce(n2000lys, n2000skov, p3_natur, skov25),
                              area) %>%
@@ -162,7 +145,25 @@ res <- foreach(i=1:n,
                  # Add vandløb res
                  res <- bind_cols(res, p3_vand_m = p3_vand.i)
 
+                 
+                 # Extract Jordart data -------------------------------------------------------
+                 jordart.i <- st_intersection(area_x, jordart)
+                 res.jord <- jordart.i %>%
+                   mutate(jord_area = st_area(.) %>% as.numeric) %>%
+                   st_drop_geometry() %>%
+                   group_by(Jordart) %>%
+                   summarise(area.pct = sum(jord_area) / park.area * 100) %>%
+                   pivot_wider(
+                     values_from = area.pct,
+                     names_from = Jordart,
+                     names_prefix = "jord_",
+                     values_fill = 0
+                   )
+                 
+                 # Add jordart res
+                 res <- bind_cols(res, res.jord)
 
+                 
                  # Terrain data ------------------------------------------------------------
                  # Subset DHM to park
                  dhm_crop <- crop(dhm, area_x)
@@ -226,21 +227,35 @@ res <- foreach(i=1:n,
                                           0)
 
 
-                 # Naturalness and Openness  ----------------------------------------------------
-                 # Load skovkort
+                 # Areal anvendelse and Naturalness and Openness  -----------
                  litra.plus.i <- st_intersection(area_x, litra.plus)
                  
+                 anvendelse <- litra.plus.i %>% 
+                   mutate(area = as.numeric(st_area(.))) %>% 
+                   st_drop_geometry() %>%
+                   group_by(Anvendelseskode)  %>%
+                   summarise(area.pct = sum(area) / park.area * 100) %>%
+                   pivot_wider(
+                     values_from = area.pct,
+                     names_from = Anvendelseskode,
+                     names_prefix = "anvendelse_",
+                     values_fill = 0
+                   )
+                 
+                 # Add anvendelse res
+                 res <- bind_cols(res, anvendelse)
+
                  natualness <- litra.plus.i %>% 
-                   mutate(area_ha = as.numeric(st_area(.)),
-                          natural_area_ha = Naturligt * area_ha,
-                          not_natural_area_ha = Ikke_hjemmehørende * area_ha,
-                          Skov_closed_area_ha = Skov_closed * area_ha,
-                          Open_area_ha = Open * area_ha) %>% 
+                   mutate(area = as.numeric(st_area(.)),
+                          natural_area = Naturligt * area,
+                          not_natural_area = Ikke_hjemmehørende * area,
+                          Skov_closed_area = Skov_closed * area,
+                          Open_area = Open * area) %>% 
                    st_drop_geometry() %>% 
-                   summarise(natural_area_pct = sum(natural_area_ha) / park.area * 100,
-                             not_natural_area_pct = sum(not_natural_area_ha) / park.area * 100,
-                             Skov_closed_area_pct = sum(Skov_closed_area_ha) / park.area * 100,
-                             Open_area_pct = sum(Open_area_ha) / park.area * 100)
+                   summarise(natural_area_pct = sum(natural_area) / park.area * 100,
+                             not_natural_area_pct = sum(not_natural_area) / park.area * 100,
+                             Skov_closed_area_pct = sum(Skov_closed_area) / park.area * 100,
+                             Open_area_pct = sum(Open_area) / park.area * 100)
                  
                  # Add Naturalness and Openness to res
                  res <- bind_cols(res, natualness)
@@ -316,7 +331,11 @@ gc()
 
 # Relocate columns
 res <- res %>% 
-  relocate(starts_with("jord"), .after = "Name")
+  relocate(colnames(.) %>% str_subset("jord") %>% sort, .after = "Name") %>% 
+  relocate(colnames(.) %>% str_subset("p25") %>% sort, .after = "Name") %>% 
+  relocate(colnames(.) %>% str_subset("p3") %>% sort, .after = "Name") %>% 
+  relocate(colnames(.) %>% str_subset("n2000") %>% sort, .after = "Name") %>% 
+  relocate(colnames(.) %>% str_subset("anvendelse") %>% sort, .after = "lavbund.pct")
 
 # Bind to area list
 df <- left_join(df, res, by = "Name")
