@@ -350,5 +350,5 @@ df$Name <- str_replace_all(df$Name, ",", " -")
 
 # Write output
 folder <- "O:/Nat_Ecoinformatics/C_Write/_Proj/NaturNationalparker_au233076_au135847/output/"
-name <- "result19072021_v1.csv"
+name <- "result19072021_v2.csv"
 write_excel_csv(df, paste(folder, name, sep = "/"))
