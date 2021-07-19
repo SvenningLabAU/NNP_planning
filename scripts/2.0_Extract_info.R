@@ -39,10 +39,8 @@ opts <- list(progress = function(n) setTxtProgressBar(pb, n))
 # Intersect a and b and keep all fields and non overlapping geometries
 union_arc_style <<- function(a, b) {
   if(nrow(a) == 0 | nrow(b) == 0) return(bind_rows(a, b))
-  a <- st_buffer(a, 0)
-  b <- st_buffer(b, 0)
-  a.union <- st_buffer(st_union(a), 0)
-  b.union <- st_buffer(st_union(b), 0)
+  a.union <- st_union(a)
+  b.union <- st_union(b)
   
   # a not in b
   a.only <- st_difference(a, b.union)
@@ -60,6 +58,8 @@ union_arc_style <<- function(a, b) {
   return(union)
 }
 
+timestamp()
+tic()
 # Start parallel ------------------------------------------------
 res <- foreach(i=1:n,
                .packages=c('raster', 'tidyverse', 'sf'), 
@@ -84,8 +84,8 @@ res <- foreach(i=1:n,
                  # st_buffer(., 0) removes lines and points and keeps only polygons
                  n2000lys.i <- st_intersection(area_x[1], n2000lys) %>% st_buffer(0)
                  n2000skov.i <- st_intersection(area_x[1], n2000skov) %>% st_buffer(0)
-                 p3_natur.i <- st_intersection(area_x[1], p3_natur) %>% st_difference %>% st_buffer(0)
-                 p25_skov.i <- st_intersection(area_x[1], p25_skov) %>% st_difference %>% st_buffer(0)
+                 p3_natur.i <- st_intersection(area_x[1], p3_natur) %>% st_buffer(0) %>% st_difference
+                 p25_skov.i <- st_intersection(area_x[1], p25_skov) %>% st_buffer(0) %>% st_difference
 
                  # Union (ArcStyle) the nature types
                  n2000 <- union_arc_style(n2000lys.i, n2000skov.i)
@@ -324,6 +324,7 @@ res <- foreach(i=1:n,
                  
                  return(res)
                }
+toc()
 
 # Clean up
 stopCluster(cl)
