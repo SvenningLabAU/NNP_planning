@@ -15,7 +15,6 @@ if(file.exists("builds/dhm.rds")) {
   # install.packages("arcgisbinding", repos="https://r.esri.com", type="win.binary")
   library(arcgisbinding)
   arc.check_product()
-  # ogrListLayers("O:/AUIT_Geodata/Denmark/Digital_elevation_models/Lidar/DHM_2014.gdb")
   dhm.mosaic <- arc.open("O:/AUIT_Geodata/Denmark/Digital_elevation_models/Lidar/DHM_2014.gdb/Terrain_2014_resample_10m")
   dhm.mosaic <- arc.raster(dhm.mosaic)
   dhm <- as.raster(dhm.mosaic)
