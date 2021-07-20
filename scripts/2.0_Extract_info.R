@@ -20,7 +20,8 @@ rm(data)
 # areas <- areas[19, ]
 # areas <- areas[1:2, ]
 # areas.bak <- areas
-# i <- which(areas$Name %in% c("Tipperne"))
+# i <- which(areas$Name %>% str_detect("Vejers Plantage"))
+# areas <- areas[i,]
 
 # Plot
 # ggplot(areas) +
@@ -345,9 +346,10 @@ gc()
 # Relocate columns
 res <- res %>% 
   relocate(colnames(.) %>% str_subset("jord") %>% sort, .after = "Name") %>%
+  relocate(beskyttet.natur.total, .after = "Name") %>%
   relocate(colnames(.) %>% str_subset("p25") %>% sort, .after = "Name") %>% 
   relocate(colnames(.) %>% str_subset("p3") %>% sort, .after = "Name") %>% 
-  relocate(colnames(.) %>% str_subset("n2000") %>% sort, .after = "Name") %>% 
+  relocate(colnames(.) %>% str_subset("n2000") %>% sort, .after = "Name") %>%
   relocate(colnames(.) %>% str_subset("anvendelse") %>% sort, .after = "lavbund.pct")
 
 # Bind to area list
