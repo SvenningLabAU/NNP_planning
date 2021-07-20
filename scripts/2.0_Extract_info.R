@@ -26,17 +26,6 @@ rm(data)
 # ggplot(areas) +
 #   geom_sf(fill = NA, col = "red")
 
-# Prep cluster
-cluster.size <- 8
-cl <- parallel::makeCluster(cluster.size)
-registerDoSNOW(cl)
-
-names <- areas$Name
-n <- length(names)
-
-pb <- txtProgressBar(max = n, style = 3)
-opts <- list(progress = function(n) setTxtProgressBar(pb, n))
-
 # Create a ArcGIS like intersect function:
 # Intersect a and b and keep all fields and non overlapping geometries
 union_arc_style <<- function(a, b) {
@@ -59,6 +48,17 @@ union_arc_style <<- function(a, b) {
 
   return(union)
 }
+
+# Prep cluster
+cluster.size <- 8
+cl <- parallel::makeCluster(cluster.size)
+registerDoSNOW(cl)
+
+names <- areas$Name
+n <- length(names)
+
+pb <- txtProgressBar(max = n, style = 3)
+opts <- list(progress = function(n) setTxtProgressBar(pb, n))
 
 timestamp()
 tic()
@@ -84,10 +84,20 @@ res <- foreach(i=1:n,
                  # - fjern eventuelle interne overlap for §3, 
                  #   for N2000 kan der være mosaikker så det kan ikke gøres her
                  # st_buffer(., 0) removes lines and points and keeps only polygons
-                 n2000lys.i <- st_intersection(area_x[1], n2000lys) %>% st_collection_extract("POLYGON")
-                 n2000skov.i <- st_intersection(area_x[1], n2000skov) %>% st_collection_extract("POLYGON")
-                 p3_natur.i <- st_intersection(area_x[1], p3_natur) %>% st_collection_extract("POLYGON") %>% st_difference
-                 p25_skov.i <- st_intersection(area_x[1], p25_skov) %>% st_collection_extract("POLYGON") %>% st_difference
+                 n2000lys.i <- st_intersection(area_x[1], n2000lys) %>% 
+                   st_collection_extract("POLYGON")
+                 n2000skov.i <- st_intersection(area_x[1], n2000skov) %>%
+                   st_collection_extract("POLYGON")
+                 p3_natur.i <- st_intersection(area_x[1], p3_natur) %>%
+                   st_collection_extract("POLYGON") %>%
+                   st_difference %>% 
+                   filter(!st_is_empty(.)) %>% 
+                   st_collection_extract("POLYGON")
+                 p25_skov.i <- st_intersection(area_x[1], p25_skov) %>%
+                   st_collection_extract("POLYGON") %>%
+                   st_difference %>%
+                   filter(!st_is_empty(.)) %>% 
+                   st_collection_extract("POLYGON")
 
                  # Union (ArcStyle) the nature types
                  n2000 <- union_arc_style(n2000lys.i, n2000skov.i)
@@ -334,7 +344,7 @@ gc()
 
 # Relocate columns
 res <- res %>% 
-  relocate(colnames(.) %>% str_subset("jord") %>% sort, .after = "Name") %>% 
+  relocate(colnames(.) %>% str_subset("jord") %>% sort, .after = "Name") %>% ○
   relocate(colnames(.) %>% str_subset("p25") %>% sort, .after = "Name") %>% 
   relocate(colnames(.) %>% str_subset("p3") %>% sort, .after = "Name") %>% 
   relocate(colnames(.) %>% str_subset("n2000") %>% sort, .after = "Name") %>% 
