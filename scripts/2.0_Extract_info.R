@@ -344,7 +344,7 @@ gc()
 
 # Relocate columns
 res <- res %>% 
-  relocate(colnames(.) %>% str_subset("jord") %>% sort, .after = "Name") %>% ○
+  relocate(colnames(.) %>% str_subset("jord") %>% sort, .after = "Name") %>%
   relocate(colnames(.) %>% str_subset("p25") %>% sort, .after = "Name") %>% 
   relocate(colnames(.) %>% str_subset("p3") %>% sort, .after = "Name") %>% 
   relocate(colnames(.) %>% str_subset("n2000") %>% sort, .after = "Name") %>% 
