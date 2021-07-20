@@ -52,7 +52,7 @@ union_arc_style <<- function(a, b) {
   
   # a and b overlap
   # st_buffer(., 0) removes lines and points and keeps only polygons
-  a.b.overlap <- st_intersection(a, b[-1]) %>% st_buffer(0)
+  a.b.overlap <- st_intersection(a, b[-1]) %>% st_collection_extract("POLYGON")
   
   # Combine all areas
   union <- bind_rows(a.only, b.only, a.b.overlap)
@@ -84,10 +84,10 @@ res <- foreach(i=1:n,
                  # - fjern eventuelle interne overlap for §3, 
                  #   for N2000 kan der være mosaikker så det kan ikke gøres her
                  # st_buffer(., 0) removes lines and points and keeps only polygons
-                 n2000lys.i <- st_intersection(area_x[1], n2000lys) %>% st_buffer(0)
-                 n2000skov.i <- st_intersection(area_x[1], n2000skov) %>% st_buffer(0)
-                 p3_natur.i <- st_intersection(area_x[1], p3_natur) %>% st_buffer(0) %>% st_difference
-                 p25_skov.i <- st_intersection(area_x[1], p25_skov) %>% st_buffer(0) %>% st_difference
+                 n2000lys.i <- st_intersection(area_x[1], n2000lys) %>% st_collection_extract("POLYGON")
+                 n2000skov.i <- st_intersection(area_x[1], n2000skov) %>% st_collection_extract("POLYGON")
+                 p3_natur.i <- st_intersection(area_x[1], p3_natur) %>% st_collection_extract("POLYGON") %>% st_difference
+                 p25_skov.i <- st_intersection(area_x[1], p25_skov) %>% st_collection_extract("POLYGON") %>% st_difference
 
                  # Union (ArcStyle) the nature types
                  n2000 <- union_arc_style(n2000lys.i, n2000skov.i)
