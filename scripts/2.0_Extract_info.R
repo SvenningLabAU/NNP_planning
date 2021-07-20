@@ -19,6 +19,8 @@ rm(data)
 # areas <- areas[which(areas$Name %in% c("Tipperne", "Vejers Plantage, sydlige del")), ]
 # areas <- areas[19, ]
 # areas <- areas[1:2, ]
+# areas.bak <- areas
+# i <- which(areas$Name %in% c("Tipperne"))
 
 # Plot
 # ggplot(areas) +
@@ -143,7 +145,7 @@ res <- foreach(i=1:n,
                    as.numeric
                  
                  # Add vandløb res
-                 res <- bind_cols(res, p3_vand_m = p3_vand.i)
+                 res$p3_vand_m <- ifelse(length(p3_vand.i) > 0, p3_vand.i, 0)
 
                  
                  # Extract Jordart data -------------------------------------------------------
@@ -351,5 +353,5 @@ df$Name <- str_replace_all(df$Name, ",", " -")
 
 # Write output
 folder <- "O:/Nat_Ecoinformatics/C_Write/_Proj/NaturNationalparker_au233076_au135847/output/"
-name <- "result19072021_v2.csv"
+name <- "result20072021_v1.csv"
 write_excel_csv(df, paste(folder, name, sep = "/"))
