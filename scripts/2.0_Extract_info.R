@@ -210,7 +210,8 @@ res <- foreach(i=1:n,
                  # Crop
                  artsscore_crop <- crop(artsscore, area_x)
                  artsscore_mask <- mask(artsscore_crop, area_x)
-                 
+
+ 
                  bioscore_crop <- crop(bioscore, area_x)
                  bioscore_mask <- mask(bioscore_crop, area_x)
                  
@@ -219,6 +220,18 @@ res <- foreach(i=1:n,
                  res$artsscore.mean <- mean(artsscore_mask[], na.rm = T)
                  res$artsscore.max <- max(artsscore_mask[], na.rm = T)
                  res$artsscore.sd <- sd(artsscore_mask[], na.rm = T)
+                 
+                 # Include NA as 0
+                 artsscore_expanded <- extend(artsscore_crop, area_x, snap = "out")
+                 artsscore_expanded[] <- replace_na(artsscore_expanded[], 999)
+                 artsscore_mask.NAas999 <- mask(artsscore_expanded, area_x)[]
+                 res$artsscore.NA.fraction <- mean(artsscore_mask.NAas999 == 999, na.rm = T)
+                 artsscore_mask.NAas0 <- artsscore_mask.NAas999
+                 artsscore_mask.NAas0[artsscore_mask.NAas0 == 999] <- 0
+                 res$artsscore.NAas0.median <- median(artsscore_mask.NAas0, na.rm = T)
+                 res$artsscore.NAas0.mean <- mean(artsscore_mask.NAas0, na.rm = T)
+                 res$artsscore.NAas0.max <- max(artsscore_mask.NAas0, na.rm = T)
+                 res$artsscore.NAas0.sd <- sd(artsscore_mask.NAas0, na.rm = T)
                  
                  res$bioscore.median <- median(bioscore_mask[], na.rm = T)
                  res$bioscore.mean <- mean(bioscore_mask[], na.rm = T)
@@ -298,6 +311,18 @@ res <- foreach(i=1:n,
                  res$buffer1000.artsscore.mean <- mean(artsscore_mask[], na.rm = T)
                  res$buffer1000.artsscore.max <- max(artsscore_mask[], na.rm = T)
                  res$buffer1000.artsscore.sd <- sd(artsscore_mask[], na.rm = T)
+
+                 # Include NA as 0
+                 artsscore_expanded <- extend(artsscore_crop, buffer, snap = "out")
+                 artsscore_expanded[] <- replace_na(artsscore_expanded[], 999)
+                 artsscore_mask.NAas999 <- mask(artsscore_expanded, buffer)[]
+                 res$buffer1000.artsscore.NA.fraction <- mean(artsscore_mask.NAas999 == 999, na.rm = T)
+                 artsscore_mask.NAas0 <- artsscore_mask.NAas999
+                 artsscore_mask.NAas0[artsscore_mask.NAas0 == 999] <- 0
+                 res$buffer1000.artsscore.NAas0.median <- median(artsscore_mask.NAas0, na.rm = T)
+                 res$buffer1000.artsscore.NAas0.mean <- mean(artsscore_mask.NAas0, na.rm = T)
+                 res$buffer1000.artsscore.NAas0.max <- max(artsscore_mask.NAas0, na.rm = T)
+                 res$buffer1000.artsscore.NAas0.sd <- sd(artsscore_mask.NAas0, na.rm = T)
                  
                  res$buffer1000.bioscore.median <- median(bioscore_mask[], na.rm = T)
                  res$buffer1000.bioscore.mean <- mean(bioscore_mask[], na.rm = T)
@@ -329,6 +354,18 @@ res <- foreach(i=1:n,
                  res$buffer5000.artsscore.mean <- mean(artsscore_mask[], na.rm = T)
                  res$buffer5000.artsscore.max <- max(artsscore_mask[], na.rm = T)
                  res$buffer5000.artsscore.sd <- sd(artsscore_mask[], na.rm = T)
+                 
+                 # Include NA as 0
+                 artsscore_expanded <- extend(artsscore_crop, buffer, snap = "out")
+                 artsscore_expanded[] <- replace_na(artsscore_expanded[], 999)
+                 artsscore_mask.NAas999 <- mask(artsscore_expanded, buffer)[]
+                 res$buffer5000.artsscore.NA.fraction <- mean(artsscore_mask.NAas999 == 999, na.rm = T)
+                 artsscore_mask.NAas0 <- artsscore_mask.NAas999
+                 artsscore_mask.NAas0[artsscore_mask.NAas0 == 999] <- 0
+                 res$buffer5000.artsscore.NAas0.median <- median(artsscore_mask.NAas0, na.rm = T)
+                 res$buffer5000.artsscore.NAas0.mean <- mean(artsscore_mask.NAas0, na.rm = T)
+                 res$buffer5000.artsscore.NAas0.max <- max(artsscore_mask.NAas0, na.rm = T)
+                 res$buffer5000.artsscore.NAas0.sd <- sd(artsscore_mask.NAas0, na.rm = T)
                  
                  res$buffer5000.bioscore.median <- median(bioscore_mask[], na.rm = T)
                  res$buffer5000.bioscore.mean <- mean(bioscore_mask[], na.rm = T)
@@ -365,5 +402,5 @@ df$Name <- str_replace_all(df$Name, ",", " -")
 
 # Write output
 folder <- "O:/Nat_Ecoinformatics/C_Write/_Proj/NaturNationalparker_au233076_au135847/output/"
-name <- "result20072021_v1.csv"
+name <- "result24082021_v3.csv"
 write_excel_csv(df, paste(folder, name, sep = "/"))

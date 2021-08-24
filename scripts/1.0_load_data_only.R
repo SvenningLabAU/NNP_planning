@@ -32,7 +32,7 @@ areas5 <- areas5 %>%
 
 # Marianne:
 areas.marianne <- st_read("O:/Nat_Ecoinformatics/C_Write/_Proj/NaturNationalparker_au233076_au135847/data/NNP/NNP_arealer/NNP_arealer.shp") %>% 
-  filter(gennemgang %in% 1:2)
+  filter(gennemgang %in% 1:3)
 areas.marianne <- st_transform(areas.marianne, "+proj=utm +zone=32 +ellps=GRS80 +units=m +no_defs")
 areas.marianne <- areas.marianne %>% 
   transmute(Name = skovnavn,
